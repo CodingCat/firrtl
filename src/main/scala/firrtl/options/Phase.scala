@@ -7,8 +7,6 @@ import firrtl.annotations.DeletedAnnotation
 
 import logger.LazyLogging
 
-import scala.collection.mutable
-
 /** A polymorphic mathematical transform
   * @tparam A the transformed type
   */
@@ -25,12 +23,28 @@ trait TransformLike[A] extends LazyLogging {
 
 }
 
+trait DependencyAPI { this: Phase =>
+
+  /** All [[Phase]]s that must run before this [[Phase]] */
+  def prerequisites: Set[Phase] = Set.empty
+
+  /** A function that, given some other [[Phase]], will return [[true]] if this [[Phase]] invalidates the other [[Phase]].
+    * By default, this invalidates everything except itself.
+    * @note Can a [[Phase]] ever invalidate itself?
+    */
+  def invalidates(phase: Phase): Boolean = phase match {
+    case _: this.type => false
+    case _ => true
+  }
+
+}
+
 /** A mathematical transformation of an [[AnnotationSeq]].
   *
   * A [[Phase]] forms one unit in the Chisel/FIRRTL Hardware Compiler Framework (HCF). The HCF is built from a sequence
   * of [[Phase]]s applied to an [[AnnotationSeq]]. Note that a [[Phase]] may consist of multiple phases internally.
   */
-abstract class Phase extends TransformLike[AnnotationSeq] {
+abstract class Phase extends TransformLike[AnnotationSeq] with DependencyAPI {
 
   /** The name of this [[Phase]]. This will be used to generate debug/error messages or when deleting annotations. This
     * will default to the `simpleName` of the class.
